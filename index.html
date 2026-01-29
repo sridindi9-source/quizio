@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quizio — Quiz Yourself on Anything</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+    <meta name="description" content="Quiz yourself on any topic! Pop culture, history, science, celebrities, movies — get 5 quick questions and test your knowledge instantly.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=Fraunces:ital,opsz,wght@0,9..144,700;1,9..144,400&display=swap" rel="stylesheet">
+    
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Open Graph for Social Sharing -->
+    <meta property="og:title" content="Quizio — Quiz Yourself on Anything">
+    <meta property="og:description" content="Test your knowledge on any topic! Pop culture, history, science, and more.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://quizio.co">
+    <meta name="twitter:card" content="summary_large_image">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #F0FDFA;
+            --bg-secondary: #CCFBF1;
+            --text-primary: #134E4A;
+            --text-secondary: #5F9EA0;
+            --accent: #14B8A6;
+            --accent-dark: #0D9488;
+            --accent-light: #99F6E4;
+            --gold: #FBBF24;
+            --gold-light: #FEF3C7;
+            --border: #A7F3D0;
+            --shadow: rgba(20, 184, 166, 0.15);
+            --correct: #22C55E;
+            --incorrect: #EF4444;
+        }
+
+        /* Skip to content link for ADA */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--accent);
+            color: white;
+            padding: 8px 16px;
+            z-index: 100;
+            text-decoration: none;
+            border-radius: 0 0 8px 0;
+        }
+
+        .skip-link:focus {
+            top: 0;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* HERO SECTION */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            position: relative;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .logo {
+            font-family: 'Fraunces', serif;
+            font-size: 2.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+            letter-spacing: -0.02em;
+        }
+
+        .logo span {
+            color: var(--accent);
+        }
+
+        .tagline {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        /* QUIZ CONTAINER */
+        .quiz-container {
+            width: 100%;
+            max-width: 550px;
+            background: var(--bg-secondary);
+            border-radius: 24px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .new-quiz-btn {
+            align-self: flex-start;
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .new-quiz-btn:hover {
+            background: var(--accent-light);
+            border-color: var(--accent);
+            color: var(--accent-dark);
+        }
+
+        .new-quiz-btn.hidden {
+            display: none;
+        }
+
+        .messages {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-height: 450px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .message {
+            padding: 1rem 1.25rem;
+            border-radius: 18px;
+            font-size: 1rem;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.assistant {
+            background: white;
+            border: 1px solid var(--border);
+            align-self: flex-start;
+            max-width: 90%;
+        }
+
+        .message.user {
+            background: var(--accent);
+            color: white;
+            align-self: flex-end;
+            max-width: 85%;
+        }
+
+        .message.question {
+            background: white;
+            border: 2px solid var(--accent);
+            align-self: stretch;
+        }
+
+        .message.question .q-number {
+            font-size: 0.75rem;
+            color: var(--accent);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .message.question .q-text {
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .answer-options {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .answer-btn {
+            padding: 0.75rem 1rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .answer-btn:hover:not(:disabled) {
+            background: var(--accent-light);
+            border-color: var(--accent);
+        }
+
+        .answer-btn:disabled {
+            cursor: not-allowed;
+        }
+
+        .answer-btn.correct {
+            background: #DCFCE7;
+            border-color: var(--correct);
+            color: #166534;
+        }
+
+        .answer-btn.incorrect {
+            background: #FEE2E2;
+            border-color: var(--incorrect);
+            color: #991B1B;
+        }
+
+        .answer-btn.reveal-correct {
+            background: #DCFCE7;
+            border-color: var(--correct);
+        }
+
+        .message.result {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+            color: white;
+            text-align: center;
+            padding: 1.5rem;
+        }
+
+        .message.result .score {
+            font-family: 'Fraunces', serif;
+            font-size: 3rem;
+            font-weight: 700;
+        }
+
+        .message.result .score-label {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .message.result .score-message {
+            margin-top: 0.75rem;
+            font-size: 1rem;
+        }
+
+        .share-btn {
+            margin-top: 1rem;
+            padding: 0.75rem 1.5rem;
+            background: white;
+            color: var(--accent-dark);
+            border: none;
+            border-radius: 12px;
+            font-family: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .share-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .input-area {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 1rem 1.25rem;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            font-size: 1rem;
+            font-family: inherit;
+            background: white;
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .input-area input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--shadow);
+        }
+
+        .input-area input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .input-area button {
+            padding: 1rem 1.5rem;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .input-area button:hover {
+            background: var(--accent-dark);
+        }
+
+        .input-area button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Quick Examples */
+        .quick-examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-top: 1.25rem;
+            max-width: 550px;
+        }
+
+        .quick-example {
+            padding: 0.5rem 1rem;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .quick-example:hover {
+            border-color: var(--accent);
+            background: var(--accent-light);
+        }
+
+        /* Loading indicator */
+        .loading {
+            display: flex;
+            gap: 4px;
+            padding: 1rem;
+        }
+
+        .loading span {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: bounce 1.4s ease-in-out infinite;
+        }
+
+        .loading span:nth-child(1) { animation-delay: 0s; }
+        .loading span:nth-child(2) { animation-delay: 0.2s; }
+        .loading span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-8px); }
+        }
+
+        /* Disclaimer */
+        .disclaimer {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Scroll Hint */
+        .scroll-hint {
+            position: absolute;
+            bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            animation: bobbing 2s ease-in-out infinite;
+            cursor: pointer;
+        }
+
+        .scroll-hint svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        @keyframes bobbing {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(5px); }
+        }
+
+        /* BROWSE BY TOPIC SECTION */
+        .content-section {
+            padding: 3rem 1.5rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-family: 'Fraunces', serif;
+            font-size: 1.75rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .section-title span {
+            color: var(--accent);
+        }
+
+        .topics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+
+        .topic-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 1.25rem 1rem;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            text-decoration: none;
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .topic-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .topic-card .emoji {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .topic-card .label {
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        /* Category Sections */
+        .category-section {
+            margin-bottom: 3rem;
+        }
+
+        .category-title {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Popular Section */
+        .popular-section {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .popular-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .popular-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .popular-card:hover {
+            border-color: var(--accent);
+            background: var(--accent-light);
+        }
+
+        .popular-card .emoji {
+            font-size: 1.5rem;
+        }
+
+        .popular-card .text .title {
+            font-weight: 500;
+        }
+
+        .popular-card .text .meta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border);
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        footer nav {
+            margin-top: 0.5rem;
+        }
+
+        footer nav a {
+            margin: 0 0.75rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .logo {
+                font-size: 2.25rem;
+            }
+
+            .quiz-container {
+                padding: 1.25rem;
+            }
+
+            .input-area {
+                flex-direction: column;
+            }
+
+            .input-area button {
+                width: 100%;
+            }
+
+            .quick-examples {
+                gap: 0.4rem;
+            }
+
+            .quick-example {
+                font-size: 0.8rem;
+                padding: 0.4rem 0.8rem;
+            }
+
+            .topics-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 0.75rem;
+            }
+
+            .topic-card {
+                padding: 1rem 0.5rem;
+            }
+
+            .topic-card .emoji {
+                font-size: 1.5rem;
+            }
+
+            .topic-card .label {
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="#main-quiz" class="skip-link">Skip to main content</a>
+
+    <section class="hero" role="main" aria-label="Quiz interface">
+        <header>
+            <h1 class="logo">Quiz<span>io</span></h1>
+            <p class="tagline">Quiz yourself on anything</p>
+        </header>
+
+        <div class="quiz-container" id="main-quiz">
+            <button type="button" class="new-quiz-btn hidden" id="newQuizBtn" onclick="resetQuiz()" aria-label="Start a new quiz">↺ New Quiz</button>
+            
+            <div class="messages" id="messages" role="log" aria-live="polite" aria-label="Quiz messages">
+                <div class="message assistant" role="status">
+                    🧠 What topic do you want to be quizzed on? I'll give you 5 questions to test your knowledge!
+                </div>
+            </div>
+
+            <div class="input-area" id="inputArea">
+                <label for="topicInput" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;">Enter a topic</label>
+                <input type="text" id="topicInput" placeholder="Quiz me on..." maxlength="100" autocomplete="off" aria-label="Enter a topic to be quizzed on">
+                <button type="button" id="startBtn" aria-label="Start quiz">Start Quiz</button>
+            </div>
+
+            <div class="disclaimer">AI-generated — answers are verified but please double-check facts</div>
+        </div>
+
+        <div class="quick-examples" id="quickExamples" role="group" aria-label="Example quiz topics">
+            <button type="button" class="quick-example" onclick="startQuizFromExample('Taylor Swift')">🎤 Taylor Swift</button>
+            <button type="button" class="quick-example" onclick="startQuizFromExample('US Geography')">🗺️ US Geography</button>
+            <button type="button" class="quick-example" onclick="startQuizFromExample('Harry Potter')">⚡ Harry Potter</button>
+            <button type="button" class="quick-example" onclick="startQuizFromExample('World History')">📜 World History</button>
+        </div>
+
+        <div class="scroll-hint" id="scrollHint" onclick="document.querySelector('.browse-section').scrollIntoView({behavior:'smooth'})" aria-hidden="true">
+            <span>Browse quiz topics</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+        </div>
+    </section>
+
+    <!-- BROWSE BY TOPIC -->
+    <section class="content-section browse-section" aria-labelledby="browse-title">
+        <h2 class="section-title" id="browse-title">📚 Browse <span>Quiz Topics</span></h2>
+        
+        <div class="category-section">
+            <h3 class="category-title">🎭 Entertainment & Pop Culture</h3>
+            <div class="topics-grid">
+                <a href="/taylor-swift-quiz.html" class="topic-card">
+                    <span class="emoji">🎤</span>
+                    <span class="label">Taylor Swift</span>
+                </a>
+                <a href="/harry-potter-quiz.html" class="topic-card">
+                    <span class="emoji">⚡</span>
+                    <span class="label">Harry Potter</span>
+                </a>
+                <a href="/marvel-quiz.html" class="topic-card">
+                    <span class="emoji">🦸</span>
+                    <span class="label">Marvel</span>
+                </a>
+                <a href="/the-office-quiz.html" class="topic-card">
+                    <span class="emoji">📋</span>
+                    <span class="label">The Office</span>
+                </a>
+                <a href="/friends-quiz.html" class="topic-card">
+                    <span class="emoji">☕</span>
+                    <span class="label">Friends</span>
+                </a>
+                <a href="/disney-quiz.html" class="topic-card">
+                    <span class="emoji">🏰</span>
+                    <span class="label">Disney</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="category-section">
+            <h3 class="category-title">📚 Education & Learning</h3>
+            <div class="topics-grid">
+                <a href="/us-geography-quiz.html" class="topic-card">
+                    <span class="emoji">🗺️</span>
+                    <span class="label">US Geography</span>
+                </a>
+                <a href="/world-capitals-quiz.html" class="topic-card">
+                    <span class="emoji">🌍</span>
+                    <span class="label">World Capitals</span>
+                </a>
+                <a href="/us-history-quiz.html" class="topic-card">
+                    <span class="emoji">📜</span>
+                    <span class="label">US History</span>
+                </a>
+                <a href="/science-quiz.html" class="topic-card">
+                    <span class="emoji">🔬</span>
+                    <span class="label">Science</span>
+                </a>
+                <a href="/food-safety-quiz.html" class="topic-card">
+                    <span class="emoji">🍕</span>
+                    <span class="label">Food Safety</span>
+                </a>
+                <a href="/math-quiz.html" class="topic-card">
+                    <span class="emoji">🔢</span>
+                    <span class="label">Math</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- POPULAR QUIZZES -->
+    <section class="content-section popular-section" aria-labelledby="popular-title">
+        <h2 class="section-title" id="popular-title">🔥 Popular <span>Quizzes</span></h2>
+        <div class="popular-grid">
+            <div class="popular-card" onclick="startQuizFromExample('Taylor Swift')" tabindex="0" role="button">
+                <span class="emoji">🎤</span>
+                <div class="text">
+                    <div class="title">Taylor Swift Trivia</div>
+                    <div class="meta">Music • 5 questions</div>
+                </div>
+            </div>
+            <div class="popular-card" onclick="startQuizFromExample('US State Capitals')" tabindex="0" role="button">
+                <span class="emoji">🏛️</span>
+                <div class="text">
+                    <div class="title">US State Capitals</div>
+                    <div class="meta">Geography • 5 questions</div>
+                </div>
+            </div>
+            <div class="popular-card" onclick="startQuizFromExample('Harry Potter')" tabindex="0" role="button">
+                <span class="emoji">⚡</span>
+                <div class="text">
+                    <div class="title">Harry Potter Trivia</div>
+                    <div class="meta">Movies & Books • 5 questions</div>
+                </div>
+            </div>
+            <div class="popular-card" onclick="startQuizFromExample('Basic Science')" tabindex="0" role="button">
+                <span class="emoji">🔬</span>
+                <div class="text">
+                    <div class="title">Basic Science Quiz</div>
+                    <div class="meta">Education • 5 questions</div>
+                </div>
+            </div>
+            <div class="popular-card" onclick="startQuizFromExample('The Office TV Show')" tabindex="0" role="button">
+                <span class="emoji">📋</span>
+                <div class="text">
+                    <div class="title">The Office Trivia</div>
+                    <div class="meta">TV Shows • 5 questions</div>
+                </div>
+            </div>
+            <div class="popular-card" onclick="startQuizFromExample('World War 2')" tabindex="0" role="button">
+                <span class="emoji">📜</span>
+                <div class="text">
+                    <div class="title">World War 2 History</div>
+                    <div class="meta">History • 5 questions</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer role="contentinfo">
+        <p>Made with 🧠 by a human + AI</p>
+        <nav aria-label="Footer navigation">
+            <a href="/about.html">About</a>
+            <a href="https://shoulditoday.com" target="_blank" rel="noopener">Decisions</a>
+            <a href="https://tipsfor.today" target="_blank" rel="noopener">Tips</a>
+        </nav>
+    </footer>
+
+    <script>
+        // ===================
+        // CONFIGURATION
+        // ===================
+        const SUPABASE_URL = 'https://znoqfqgcxtmkbhieunnw.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_kHmLB3rcwYUiJZEoYz85bg_lyct-RAp';
+        
+        let supabase;
+        let currentQuizId = null;
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch(e) {
+            console.log('Supabase init skipped');
+        }
+
+        // ===================
+        // SAFETY FILTERS
+        // ===================
+        const BLOCKED_PATTERNS = [
+            /\b(porn|xxx|sex|nude|naked|hentai)\b/i,
+            /\b(kill|murder|suicide|terroris|bomb|weapon)\b/i,
+            /\b(drug|cocaine|heroin|meth)\b/i,
+            /\b(child|minor|underage).*(sex|abuse|porn)/i,
+            /\b(rape|assault|molest)\b/i,
+            /\b(nazi|hitler|white\s*power|kkk)\b/i,
+            /how\s+to\s+(hack|steal|forge)/i,
+        ];
+
+        function isBlocked(text) {
+            return BLOCKED_PATTERNS.some(pattern => pattern.test(text));
+        }
+
+        // ===================
+        // QUIZ STATE
+        // ===================
+        let quizState = {
+            active: false,
+            topic: '',
+            questions: [],
+            currentQuestion: 0,
+            score: 0,
+            answers: []
+        };
+
+        // ===================
+        // DOM ELEMENTS
+        // ===================
+        const messagesDiv = document.getElementById('messages');
+        const topicInput = document.getElementById('topicInput');
+        const startBtn = document.getElementById('startBtn');
+        const inputArea = document.getElementById('inputArea');
+        const newQuizBtn = document.getElementById('newQuizBtn');
+        const quickExamples = document.getElementById('quickExamples');
+        const scrollHint = document.getElementById('scrollHint');
+
+        // ===================
+        // EVENT LISTENERS
+        // ===================
+        startBtn.addEventListener('click', startQuiz);
+        topicInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') startQuiz();
+        });
+
+        // Popular card keyboard support
+        document.querySelectorAll('.popular-card').forEach(card => {
+            card.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    card.click();
+                }
+            });
+        });
+
+        // ===================
+        // QUIZ FUNCTIONS
+        // ===================
+        function startQuizFromExample(topic) {
+            topicInput.value = topic;
+            startQuiz();
+        }
+
+        async function startQuiz() {
+            const topic = topicInput.value.trim();
+            if (!topic) return;
+
+            // Safety check
+            if (isBlocked(topic)) {
+                addMessage("I can't create a quiz on that topic. Please try something else! 🙏", 'assistant');
+                return;
+            }
+
+            // Update UI
+            addMessage(topic, 'user');
+            quickExamples.style.display = 'none';
+            scrollHint.style.display = 'none';
+            inputArea.style.display = 'none';
+            newQuizBtn.classList.remove('hidden');
+
+            // Show loading
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message assistant loading';
+            loadingDiv.innerHTML = '<span></span><span></span><span></span>';
+            messagesDiv.appendChild(loadingDiv);
+            scrollToBottom();
+
+            try {
+                // Call API to generate quiz
+                const response = await fetch('/.netlify/functions/quiz', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic })
+                });
+
+                const data = await response.json();
+                loadingDiv.remove();
+
+                if (data.error) {
+                    addMessage("Sorry, I couldn't generate a quiz on that topic. Please try another! 🤔", 'assistant');
+                    resetQuiz();
+                    return;
+                }
+
+                // Parse quiz questions
+                quizState = {
+                    active: true,
+                    topic: topic,
+                    questions: data.questions,
+                    currentQuestion: 0,
+                    score: 0,
+                    answers: []
+                };
+
+                addMessage(`Great! Here's your ${topic} quiz. 5 questions — let's see what you know! 🎯`, 'assistant');
+                
+                // Show first question
+                setTimeout(() => showQuestion(0), 500);
+
+                // Log to Supabase
+                logQuiz(topic);
+
+            } catch (error) {
+                console.error('Error:', error);
+                loadingDiv.remove();
+                addMessage("Oops! Something went wrong. Please try again. 😅", 'assistant');
+                resetQuiz();
+            }
+        }
+
+        function showQuestion(index) {
+            const q = quizState.questions[index];
+            if (!q) return;
+
+            const questionDiv = document.createElement('div');
+            questionDiv.className = 'message question';
+            questionDiv.innerHTML = `
+                <div class="q-number">Question ${index + 1} of 5</div>
+                <div class="q-text">${q.question}</div>
+                <div class="answer-options">
+                    ${q.options.map((opt, i) => `
+                        <button class="answer-btn" onclick="selectAnswer(${index}, ${i})" data-index="${i}">
+                            ${String.fromCharCode(65 + i)}. ${opt}
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+            messagesDiv.appendChild(questionDiv);
+            scrollToBottom();
+        }
+
+        function selectAnswer(questionIndex, answerIndex) {
+            const q = quizState.questions[questionIndex];
+            const isCorrect = answerIndex === q.correct;
+            
+            if (isCorrect) quizState.score++;
+            quizState.answers.push(answerIndex);
+
+            // Disable all buttons and show correct/incorrect
+            const buttons = document.querySelectorAll('.message.question:last-child .answer-btn');
+            buttons.forEach((btn, i) => {
+                btn.disabled = true;
+                if (i === q.correct) {
+                    btn.classList.add('correct');
+                } else if (i === answerIndex && !isCorrect) {
+                    btn.classList.add('incorrect');
+                }
+            });
+
+            // Show feedback
+            setTimeout(() => {
+                if (isCorrect) {
+                    addMessage("✅ Correct!", 'assistant');
+                } else {
+                    addMessage(`❌ Not quite! The answer was: ${String.fromCharCode(65 + q.correct)}. ${q.options[q.correct]}`, 'assistant');
+                }
+
+                // Next question or results
+                setTimeout(() => {
+                    quizState.currentQuestion++;
+                    if (quizState.currentQuestion < 5) {
+                        showQuestion(quizState.currentQuestion);
+                    } else {
+                        showResults();
+                    }
+                }, 800);
+            }, 300);
+        }
+
+        function showResults() {
+            const score = quizState.score;
+            let message = '';
+            let emoji = '';
+
+            if (score === 5) {
+                message = "Perfect score! You're a genius! 🏆";
+                emoji = '🎉';
+            } else if (score >= 4) {
+                message = "Excellent! You really know your stuff!";
+                emoji = '🌟';
+            } else if (score >= 3) {
+                message = "Good job! Pretty solid knowledge!";
+                emoji = '👍';
+            } else if (score >= 2) {
+                message = "Not bad! Room for improvement.";
+                emoji = '📚';
+            } else {
+                message = "Keep learning! You'll get there!";
+                emoji = '💪';
+            }
+
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'message result';
+            resultDiv.innerHTML = `
+                <div class="score">${score}/5</div>
+                <div class="score-label">${emoji} ${message}</div>
+                <button class="share-btn" onclick="shareResult()">📤 Share Result</button>
+            `;
+            messagesDiv.appendChild(resultDiv);
+            scrollToBottom();
+
+            // Save score to Supabase
+            updateQuizScore(score);
+
+            quizState.active = false;
+        }
+
+        function shareResult() {
+            const text = `I scored ${quizState.score}/5 on the ${quizState.topic} quiz! 🧠 Can you beat me? quizio.co`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Quizio Quiz Result',
+                    text: text,
+                    url: 'https://quizio.co'
+                });
+            } else {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('Result copied to clipboard!');
+                });
+            }
+        }
+
+        function resetQuiz() {
+            quizState = {
+                active: false,
+                topic: '',
+                questions: [],
+                currentQuestion: 0,
+                score: 0,
+                answers: []
+            };
+            currentQuizId = null;
+
+            messagesDiv.innerHTML = `
+                <div class="message assistant" role="status">
+                    🧠 What topic do you want to be quizzed on? I'll give you 5 questions to test your knowledge!
+                </div>
+            `;
+
+            topicInput.value = '';
+            inputArea.style.display = 'flex';
+            newQuizBtn.classList.add('hidden');
+            quickExamples.style.display = 'flex';
+            scrollHint.style.display = 'flex';
+            topicInput.focus();
+        }
+
+        // ===================
+        // HELPER FUNCTIONS
+        // ===================
+        function addMessage(text, type) {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.textContent = text;
+            messagesDiv.appendChild(div);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        async function logQuiz(topic) {
+            if (!supabase) return null;
+            try {
+                const { data, error } = await supabase
+                    .from('quizio_quizzes')
+                    .insert([{ topic: topic, score: null, completed: false }])
+                    .select('id')
+                    .single();
+                
+                if (data) {
+                    currentQuizId = data.id;
+                    return data.id;
+                }
+            } catch (e) {
+                console.log('Logging skipped:', e);
+            }
+            return null;
+        }
+
+        async function updateQuizScore(score) {
+            if (!supabase || !currentQuizId) return;
+            try {
+                await supabase
+                    .from('quizio_quizzes')
+                    .update({ score: score, completed: true })
+                    .eq('id', currentQuizId);
+            } catch (e) {
+                console.log('Score update skipped:', e);
+            }
+        }
+
+        // Focus input on load
+        topicInput.focus();
+    </script>
+</body>
+</html>
