@@ -654,60 +654,60 @@
         <div class="category-section">
             <h3 class="category-title">🎭 Entertainment & Pop Culture</h3>
             <div class="topics-grid">
-                <a href="/taylor-swift-quiz.html" class="topic-card">
+                <div class="topic-card" onclick="startQuizFromExample('Taylor Swift')" tabindex="0" role="button">
                     <span class="emoji">🎤</span>
                     <span class="label">Taylor Swift</span>
-                </a>
-                <a href="/harry-potter-quiz.html" class="topic-card">
+                </div>
+                <div class="topic-card" onclick="startQuizFromExample('Harry Potter')" tabindex="0" role="button">
                     <span class="emoji">⚡</span>
                     <span class="label">Harry Potter</span>
-                </a>
-                <a href="/marvel-quiz.html" class="topic-card">
+                </div>
+                <div class="topic-card" onclick="startQuizFromExample('Marvel Movies')" tabindex="0" role="button">
                     <span class="emoji">🦸</span>
                     <span class="label">Marvel</span>
-                </a>
-                <a href="/the-office-quiz.html" class="topic-card">
+                </div>
+                <div class="topic-card" onclick="startQuizFromExample('The Office TV Show')" tabindex="0" role="button">
                     <span class="emoji">📋</span>
                     <span class="label">The Office</span>
-                </a>
-                <a href="/friends-quiz.html" class="topic-card">
+                </div>
+                <div class="topic-card" onclick="startQuizFromExample('Friends TV Show')" tabindex="0" role="button">
                     <span class="emoji">☕</span>
                     <span class="label">Friends</span>
-                </a>
-                <a href="/disney-quiz.html" class="topic-card">
+                </div>
+                <div class="topic-card" onclick="startQuizFromExample('Disney Movies')" tabindex="0" role="button">
                     <span class="emoji">🏰</span>
                     <span class="label">Disney</span>
-                </a>
+                </div>
             </div>
         </div>
 
         <div class="category-section">
             <h3 class="category-title">📚 Education & Learning</h3>
             <div class="topics-grid">
-                <a href="/us-geography-quiz.html" class="topic-card">
+                <div class="topic-card" onclick="startQuizFromExample('US Geography')" tabindex="0" role="button">
                     <span class="emoji">🗺️</span>
                     <span class="label">US Geography</span>
-                </a>
-                <a href="/world-capitals-quiz.html" class="topic-card">
+                </div>
+                <div class="topic-card" onclick="startQuizFromExample('World Capitals')" tabindex="0" role="button">
                     <span class="emoji">🌍</span>
                     <span class="label">World Capitals</span>
-                </a>
-                <a href="/us-history-quiz.html" class="topic-card">
+                </div>
+                <div class="topic-card" onclick="startQuizFromExample('US History')" tabindex="0" role="button">
                     <span class="emoji">📜</span>
                     <span class="label">US History</span>
-                </a>
-                <a href="/science-quiz.html" class="topic-card">
+                </div>
+                <div class="topic-card" onclick="startQuizFromExample('Basic Science')" tabindex="0" role="button">
                     <span class="emoji">🔬</span>
                     <span class="label">Science</span>
-                </a>
-                <a href="/food-safety-quiz.html" class="topic-card">
+                </div>
+                <div class="topic-card" onclick="startQuizFromExample('Food Safety')" tabindex="0" role="button">
                     <span class="emoji">🍕</span>
                     <span class="label">Food Safety</span>
-                </a>
-                <a href="/math-quiz.html" class="topic-card">
+                </div>
+                <div class="topic-card" onclick="startQuizFromExample('Basic Math')" tabindex="0" role="button">
                     <span class="emoji">🔢</span>
                     <span class="label">Math</span>
-                </a>
+                </div>
             </div>
         </div>
     </section>
@@ -768,6 +768,7 @@
             <a href="/about.html">About</a>
             <a href="https://shoulditoday.com" target="_blank" rel="noopener">Decisions</a>
             <a href="https://tipsfor.today" target="_blank" rel="noopener">Tips</a>
+            <a href="https://buymeacoffee.com/sri_micro" target="_blank" rel="noopener">Buy me a coffee</a>
         </nav>
     </footer>
 
@@ -778,10 +779,10 @@
         const SUPABASE_URL = 'https://znoqfqgcxtmkbhieunnw.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_kHmLB3rcwYUiJZEoYz85bg_lyct-RAp';
         
-        let supabase;
+        let supabaseClient;
         let currentQuizId = null;
         try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         } catch(e) {
             console.log('Supabase init skipped');
         }
@@ -849,8 +850,21 @@
         // ===================
         function startQuizFromExample(topic) {
             topicInput.value = topic;
-            startQuiz();
+            // Scroll to top of page so user sees the quiz
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            // Small delay to let scroll start before quiz begins
+            setTimeout(() => startQuiz(), 300);
         }
+
+        // Keyboard support for topic cards
+        document.querySelectorAll('.topic-card[role="button"]').forEach(card => {
+            card.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    card.click();
+                }
+            });
+        });
 
         async function startQuiz() {
             const topic = topicInput.value.trim();
@@ -1073,9 +1087,9 @@
         }
 
         async function logQuiz(topic) {
-            if (!supabase) return null;
+            if (!supabaseClient) return null;
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('quizio_quizzes')
                     .insert([{ topic: topic, score: null, completed: false }])
                     .select('id')
@@ -1092,9 +1106,9 @@
         }
 
         async function updateQuizScore(score) {
-            if (!supabase || !currentQuizId) return;
+            if (!supabaseClient || !currentQuizId) return;
             try {
-                await supabase
+                await supabaseClient
                     .from('quizio_quizzes')
                     .update({ score: score, completed: true })
                     .eq('id', currentQuizId);
