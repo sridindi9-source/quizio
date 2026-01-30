@@ -1206,8 +1206,17 @@
             }
         }
 
-        // Focus input on load
-        topicInput.focus();
+        // Check for quiz parameter in URL (from SEO pages)
+        const urlParams = new URLSearchParams(window.location.search);
+        const quizTopic = urlParams.get('quiz');
+        if (quizTopic) {
+            // Auto-start quiz with the topic from URL
+            topicInput.value = decodeURIComponent(quizTopic);
+            setTimeout(() => startQuiz(), 500);
+        } else {
+            // Focus input on load
+            topicInput.focus();
+        }
     </script>
 </body>
 </html>
